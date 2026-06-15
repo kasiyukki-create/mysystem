@@ -1,0 +1,6 @@
+﻿node_modules/
+*.log
+Pulse1Hz_*
+touhiyou
+.env
+.DS_Store

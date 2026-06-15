@@ -1,0 +1,130 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>チャット</title>
+  <style>
+      body { font-family: sans-serif; max-width: 480px; margin: 40px auto;
+          background: #f0f4f8; padding: 0 16px; }
+      h1   { background: hsl(182, 87%, 63%); color: white; padding: 12px 20px;
+          border-radius: 6px; font-size: 20px; }
+      form { display: flex; gap: 8px; margin-bottom: 12px; }
+      input  { flex: 1; padding: 8px 10px; border: 1px solid #bbb;
+              border-radius: 4px; font-size: 15px; }
+      button { padding: 8px 14px; background: #0d7377; color: white;
+              border: none; border-radius: 4px; cursor: pointer; }
+      #messages    { list-style: none; padding: 0; }
+      #messages li { background: white; padding: 8px 12px; margin-bottom: 8px;
+                  border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+  <h1>チャット6/9 9:59自動デプロイバージョン</h1>
+  <form id="form">
+    <input type="text" id="username" placeholder="名前" required>
+    <input type="text" id="text" placeholder="メッセージ" required>
+    <button type="submit">送信</button>
+  </form>
+  <ul id="messages"></ul>
+
+  <script>
+    async function getMessages() {
+      try {
+        const response = await fetch('api/messages');
+        const messages = await response.json();
+        const ul = document.getElementById('messages');
+        ul.innerHTML = '';
+        messages.forEach(msg => {
+          const li = document.createElement('li');
+          li.textContent = `${msg.username}: ${msg.text}`;
+          ul.appendChild(li);
+        });
+      } catch (e) {
+        console.error('取得エラー', e);
+      }
+    }
+
+/*
+    async function sendMessage(username, text) {
+      try {
+        await fetch('api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, text })
+        });
+        getMessages();
+      } catch (e) {
+        console.error('送信エラー', e);
+      }
+    }
+*/
+
+    async function sendMessage(username, text) {
+      try {
+        console.log('📤 送信試行:', { username, text });  // デバッグ用
+
+        if (!text || text.trim() === '') {
+          alert('メッセージを入力してください');
+          return;
+        }
+
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            user: username || '匿名', 
+            text: text.trim() 
+          })
+        });
+
+        console.log('📥 レスポンスステータス:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || '送信失敗');
+        }
+
+        const result = await response.json();
+        console.log('✅ 送信成功:', result);
+
+         // 送信成功したら入力欄をクリアして更新
+        document.getElementById('text').value = '';
+        await getMessages();   // 最新メッセージを表示
+
+      } catch (e) {
+        console.error('❌ 送信エラー詳細:', e);
+        alert('送信に失敗しました: ' + (e.message || e));
+      }
+    }
+
+    /*document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const text = document.getElementById('text').value.trim();
+      if (username && text) {
+        await sendMessage(username, text);
+        document.getElementById('text').value = '';
+      }
+    });*/
+
+    // 初期表示と定期更新
+        document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value.trim();
+      const textInput = document.getElementById('text');
+      const text = textInput ? textInput.value.trim() : '';
+
+      if (username && text) {
+        await sendMessage(username, text);
+        
+        // 安全にクリア
+        if (textInput) textInput.value = '';
+      }
+    });
+
+    getMessages();
+    setInterval(getMessages, 2000);
+  </script>
+</body>

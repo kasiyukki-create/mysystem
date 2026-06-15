@@ -1,0 +1,22 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH でデプロイ
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASS }}
+          script: |
+            cd ~/test_PR_html/myapp
+            git pull origin main
+            npm install --production
+            pm2 restart chat
+            echo "✅ デプロイ完了！ $(date)"

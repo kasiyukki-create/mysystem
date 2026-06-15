@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>大学やること防止アプリ</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 10px 15px; margin: 5px; font-size: 16px; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>大学やること見逃し防止アプリ</h1>
+
+  <button onclick="createTask()">📌 タスクを作成（POST）</button>
+  <button onclick="createEvent()">🎉 イベントを作成（POST）</button>
+
+  <h2>結果</h2>
+  <pre id="result"></pre>
+
+  <script>
+    async function createTask() {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: "卒論資料作成",
+          deadline: "2026-06-05",
+          completed: false
+        })
+      });
+
+      const data = await response.json();
+      document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      console.log('✅ タスク作成結果:', data);
+    }
+
+    async function createEvent() {
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: "就活セミナー",
+          event_date: "2026-06-20",
+          apply_deadline: "2026-06-10"
+        })
+      });
+
+      const data = await response.json();
+      document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      console.log('✅ イベント作成結果:', data);
+    }
+  </script>
+</body>
+</html>

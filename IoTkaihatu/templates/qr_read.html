@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRコード読み取り - あんしんタッチ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary: #dc2626;
+    }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #fff7f7;
+    }
+    .camera-frame {
+      border: 5px solid var(--primary);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(transparent, #dc2626, transparent);
+      animation: scan 2s linear infinite;
+    }
+    @keyframes scan {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(400%); }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <div class="max-w-lg mx-auto pt-8 px-4">
+    
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-bold text-red-600">受付</h1>
+      <p class="text-gray-600">QRコードを読み取ってください</p>
+    </div>
+
+    <!-- カメラエリア -->
+    <div class="camera-frame bg-black aspect-video mb-6 relative">
+      <video id="video" class="w-full h-full object-cover"></video>
+      <div class="scan-line"></div>
+      <div class="absolute bottom-4 left-0 right-0 text-center">
+        <div class="inline-block bg-black bg-opacity-70 text-white text-xs px-4 py-1 rounded-full">
+          カメラ起動中...
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center text-sm text-gray-500 mb-8">
+      QRコードを枠内に合わせてください
+    </div>
+
+    <!-- 結果表示エリア -->
+    <div id="result" class="hidden bg-white rounded-2xl p-6 shadow">
+      <h3 class="font-semibold text-lg mb-3">読み取り結果</h3>
+      <p id="qr-data" class="mb-4 text-sm"></p>
+      <button onclick="resetCamera()" 
+              class="bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700">
+        次の人を読み取る
+      </button>
+    </div>
+
+    <div class="mt-8 text-center">
+      <button onclick="stopCamera()" 
+              class="text-gray-500 hover:text-gray-700">
+        ← 受付を終了する
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script>
+    let video = document.getElementById('video');
+    let canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+    let stream = null;
+
+    // カメラ起動
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" } 
+        });
+        video.srcObject = stream;
+        video.play();
+        requestAnimationFrame(scanQR);
+      } catch (err) {
+        alert("カメラが起動できませんでした。");
+        console.error(err);
+      }
+    }
+
+    // QRコードをスキャンする関数
+    function scanQR() {
+      if (video.paused || video.ended) return;
+
+      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code) {
+        // QRコードを検知したら
+        document.getElementById('result').classList.remove('hidden');
+        document.getElementById('qr-data').innerHTML = `
+          <strong>QRコード検出！</strong><br>
+          データ: ${code.data}
+        `;
+        stopCamera();
+        return;
+      }
+
+      requestAnimationFrame(scanQR);
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    }
+
+    function resetCamera() {
+      document.getElementById('result').classList.add('hidden');
+      startCamera();
+    }
+
+    // ページ読み込み時にカメラ起動
+    window.onload = startCamera;
+  </script>
+</body>
+</html>

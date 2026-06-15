@@ -1,0 +1,16 @@
+<script>
+async function sendData() {
+  // 今回設計したタスク追加のURLに変えるよ
+  const response = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // 設計書（api.md）のデータの形に合わせるよ
+    body: JSON.stringify({ 
+      title: "新しい課題名", 
+      deadline: "2026-05-30" 
+    })
+  });
+  const data = await response.json();
+  console.log(data); // サーバーから返ってきたデータがコンソールに出るよ
+}
+</script>

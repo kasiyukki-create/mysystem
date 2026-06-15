@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>避難所ホーム - あんしんタッチ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #fff7f7;
+      min-height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body class="pb-12">
+
+  <div class="max-w-lg mx-auto pt-8 px-4">
+    
+    <!-- ヘッダー -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-red-600">〇〇避難所</h1>
+      <p class="text-gray-500">避難所スタッフ画面</p>
+    </div>
+
+    <!-- 現在の状況 -->
+    <div class="card p-6 mb-8">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-sm text-gray-500">現在の受付人数</p>
+          <p class="text-5xl font-bold text-gray-800">24 <span class="text-2xl font-normal text-gray-400">人</span></p>
+        </div>
+        <div class="text-right">
+          <p class="text-sm text-gray-500">最大収容人数</p>
+          <p class="text-2xl font-semibold">150人</p>
+          <p class="text-xs text-green-600">充足率 16%</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- メニュー -->
+    <div class="space-y-4">
+      
+      <a href="qr_read.html" 
+         class="card p-6 flex items-center gap-4 hover:bg-red-50 transition-colors block">
+        <div class="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-3xl">📷</div>
+        <div>
+          <h3 class="font-semibold text-lg">受付を開始する</h3>
+          <p class="text-gray-600 text-sm">QRコードを読み取ってチェックイン</p>
+        </div>
+      </a>
+
+      <a href="shelter_list.html" 
+         class="card p-6 flex items-center gap-4 hover:bg-red-50 transition-colors block">
+        <div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-3xl">📋</div>
+        <div>
+          <h3 class="font-semibold text-lg">避難者一覧を確認する</h3>
+          <p class="text-gray-600 text-sm">現在この避難所にいる人</p>
+        </div>
+      </a>
+
+    </div>
+
+    <div class="text-center mt-12">
+      <button onclick="logout()" 
+              class="text-gray-500 hover:text-red-600 text-sm">
+        ログアウト
+      </button>
+    </div>
+  </div>
+
+  <script>
+    function logout() {
+      if (confirm("ログアウトしますか？")) {
+        window.location.href = "login.html";
+      }
+    }
+  </script>
+
+</body>
+</html>

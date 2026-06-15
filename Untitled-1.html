@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>避難所支援システム - 事前登録</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <style>
+    .required { color: red; }
+  </style>
+</head>
+<body class="bg-gray-50 py-8">
+  <div class="max-w-2xl mx-auto bg-white shadow-lg rounded-xl p-8">
+    <h1 class="text-3xl font-bold text-center mb-8 text-red-700">避難所支援システム 事前登録</h1>
+    
+    <form id="registerForm">
+      <!-- 基本情報 -->
+      <h2 class="text-xl font-semibold mb-4 border-b pb-2">基本情報</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">氏名 <span class="required">*</span></label>
+          <input type="text" id="name" required class="w-full border rounded-lg px-4 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">ふりがな</label>
+          <input type="text" id="kana" class="w-full border rounded-lg px-4 py-2">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">生年月日 <span class="required">*</span></label>
+          <input type="date" id="birthdate" required class="w-full border rounded-lg px-4 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">性別</label>
+          <select id="gender" class="w-full border rounded-lg px-4 py-2">
+            <option value="">選択してください</option>
+            <option value="male">男性</option>
+            <option value="female">女性</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">連絡先メールアドレス <span class="required">*</span></label>
+        <input type="email" id="email" required class="w-full border rounded-lg px-4 py-2">
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">電話番号</label>
+        <input type="tel" id="phone" class="w-full border rounded-lg px-4 py-2">
+      </div>
+
+      <!-- 持病・医療情報 -->
+      <h2 class="text-xl font-semibold mt-10 mb-4 border-b pb-2">持病・医療情報</h2>
+      
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">主な持病・疾患（複数選択可）</label>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <label><input type="checkbox" value="高血圧" class="medical"> 高血圧</label>
+          <label><input type="checkbox" value="糖尿病" class="medical"> 糖尿病</label>
+          <label><input type="checkbox" value="心疾患" class="medical"> 心疾患</label>
+          <label><input type="checkbox" value="呼吸器疾患" class="medical"> 呼吸器疾患</label>
+          <label><input type="checkbox" value="腎臓病" class="medical"> 腎臓病</label>
+          <label><input type="checkbox" value="その他" class="medical"> その他</label>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">詳細な持病情報・服用薬・アレルギーなど</label>
+        <textarea id="medicalDetail" rows="4" class="w-full border rounded-lg px-4 py-2"></textarea>
+      </div>
+
+      <div class="mt-6">
+        <button type="submit" 
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-lg">
+          登録してQRコードを発行する
+        </button>
+      </div>
+    </form>
+
+    <!-- QRコード表示エリア -->
+    <div id="qrSection" class="hidden mt-10 text-center">
+      <h3 class="text-lg font-semibold mb-4">あなたのQRコード</h3>
+      <div id="qrcode" class="mx-auto"></div>
+      <p class="text-sm text-gray-600 mt-4">このQRコードを印刷して避難所にお持ちください</p>
+      <button onclick="downloadQR()" 
+              class="mt-6 bg-blue-600 text-white px-8 py-3 rounded-lg">
+        QRコードを画像でダウンロード
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ここにFirebase初期化コードを入れる
+    const firebaseConfig = {
+      // あなたのFirebase設定をここに入力
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUserId = null;
+    let qrCodeInstance = null;
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = "temporaryPass123!"; // 本番ではランダム生成 or 後で設定させる
+
+      try {
+        // 1. Firebase Authでユーザー作成
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        currentUserId = userCredential.user.uid;
+
+        // 2. フォームデータを集める
+        const medicalChecks = Array.from(document.querySelectorAll('.medical:checked'))
+                                 .map(el => el.value);
+
+        const userData = {
+          uid: currentUserId,
+          name: document.getElementById('name').value,
+          kana: document.getElementById('kana').value,
+          birthdate: document.getElementById('birthdate').value,
+          gender: document.getElementById('gender').value,
+          phone: document.getElementById('phone').value,
+          medicalConditions: medicalChecks,
+          medicalDetail: document.getElementById('medicalDetail').value,
+          registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+          role: "evacuee"
+        };
+
+        // 3. Firestoreに保存
+        await db.collection('evacuees').doc(currentUserId).set(userData);
+
+        // 4. QRコード生成（UIDをエンコード）
+        showQRCode(currentUserId);
+
+        alert('登録が完了しました！QRコードを発行しました。');
+
+      } catch (error) {
+        console.error(error);
+        alert('登録に失敗しました: ' + error.message);
+      }
+    });
+
+    function showQRCode(uid) {
+      document.getElementById('qrSection').classList.remove('hidden');
+      document.getElementById('qrcode').innerHTML = '';
+      
+      qrCodeInstance = new QRCode(document.getElementById("qrcode"), {
+        text: uid,           // または JSON.stringify({uid: uid}) でも可
+        width: 256,
+        height: 256,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+
+    function downloadQR() {
+      const canvas = document.querySelector('#qrcode canvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = 'my-evacuation-qr.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    }
+  </script>
+</body>
+</html>
