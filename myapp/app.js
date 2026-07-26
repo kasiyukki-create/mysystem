@@ -6,8 +6,9 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
+app.use(express.static("frontend/dist"));   // 本番用のReact画面を配信
 
-// データベース接続の設定 (すでにある.env設定を利用)
+// データベース接続の設定
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -16,7 +17,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
-// 接続テスト（起動時に実行）
+// 接続テスト
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('❌ DB接続失敗:', err.message);
@@ -26,28 +27,6 @@ pool.query('SELECT NOW()', (err, res) => {
 });
 
 console.log('使用中のDB:', process.env.DB_NAME);
-
-/*
-
-// 2. メッセージ取得API (GET)
-app.get('/api/messages', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM messages ORDER BY id ASC');
-        // chat.htmlのフロントエンドが期待する形式（user, text）に合わせる
-        const messages = result.rows.map(row => ({
-            id: row.id,
-            username: row.username,
-            text: row.text,
-            created_at: row.created_at ? new Date(row.created_at).toLocaleString('ja-JP') : ''
-        }));
-        res.json(messages);
-    } catch (err) {
-        console.error('データ取得エラー:', err);
-        res.status(500).json({ error: 'データの読み込みに失敗しました' });
-    }
-});
-
-*/
 
 // GET メッセージ取得
 app.get('/api/messages', async (req, res) => {
@@ -74,7 +53,6 @@ app.get('/api/messages', async (req, res) => {
 
   } catch (err) {
     console.error('❌ メッセージ取得エラー詳細:', err.message);
-    console.error('エラー全体:', err);
     res.status(500).json({ 
       error: 'サーバーエラー', 
       message: err.message 
@@ -82,86 +60,45 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
-/*
-// 3. メッセージ保存API (POST)
+// POST メッセージ保存
 app.post('/api/messages', async (req, res) => {
-    const { user, text } = req.body;
-    if (!text) return res.status(400).json({ error: '内容が空です' });
+  const { username, text } = req.body;   // React側に合わせて username に変更
 
-    try {
-        const result = await pool.query(
-            'INSERT INTO messages (username, text) VALUES ($1, $2) RETURNING *',
-            [user || '匿名', text]
-        );
-        const savedMsg = result.rows[0];
-        res.status(201).json({
-            id: savedMsg.id,
-            user: savedMsg.username,
-            text: savedMsg.text,
-            time: new Date(savedMsg.created_at).toLocaleString('ja-JP')
-        });
-    } catch (err) {
-        console.error('データ保存エラー:', err);
-        res.status(500).json({ error: 'メッセージの保存に失敗しました' });
-    }
-});
-*/
+  if (!text || text.trim() === '') {
+    return res.status(400).json({ error: 'メッセージの内容が空です' });
+  }
 
-// 3. メッセージ保存API (POST) - 修正版
-app.post('/api/messages', async (req, res) => {
-    const { user, text } = req.body;   // フロントエンドから送られてくる想定
+  try {
+    console.log('📤 メッセージ保存リクエスト受信:', { username, text: text.substring(0, 50) });
 
-    // バリデーション
-    if (!text || text.trim() === '') {
-        return res.status(400).json({ error: 'メッセージの内容が空です' });
-    }
+    const result = await pool.query(
+      'INSERT INTO messages (username, text) VALUES ($1, $2) RETURNING *',
+      [username || '匿名', text.trim()]
+    );
 
-    try {
-        console.log('📤 メッセージ保存リクエスト受信:', { user, text: text.substring(0, 50) });
+    const savedMsg = result.rows[0];
 
-        const result = await pool.query(
-            'INSERT INTO messages (username, text) VALUES ($1, $2) RETURNING *',
-            [user || '匿名', text.trim()]
-        );
+    console.log(`✅ メッセージ保存成功: ID=${savedMsg.id}`);
 
-        const savedMsg = result.rows[0];
+    res.status(201).json({
+      id: savedMsg.id,
+      username: savedMsg.username,
+      text: savedMsg.text,
+      created_at: savedMsg.created_at 
+        ? new Date(savedMsg.created_at).toLocaleString('ja-JP') 
+        : new Date().toLocaleString('ja-JP')
+    });
 
-        console.log(`✅ メッセージ保存成功: ID=${savedMsg.id}`);
-
-        // フロントエンドとGET APIに合わせたレスポンス形式
-        res.status(201).json({
-            id: savedMsg.id,
-            username: savedMsg.username,
-            text: savedMsg.text,
-            created_at: savedMsg.created_at 
-                ? new Date(savedMsg.created_at).toLocaleString('ja-JP') 
-                : new Date().toLocaleString('ja-JP')
-        });
-
-    } catch (err) {
-        console.error('❌ メッセージ保存エラー詳細:', err.message);
-        console.error('エラー全体:', err);
-        
-        // 権限エラーなどの場合にわかりやすいメッセージを返す
-        if (err.code === '42501') {
-            res.status(500).json({ 
-                error: '権限エラー', 
-                message: 'テーブルへの書き込み権限がありません' 
-            });
-        } else {
-            res.status(500).json({ 
-                error: 'サーバーエラー', 
-                message: 'メッセージの保存に失敗しました' 
-            });
-        }
-    }
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'chat.html'));
+  } catch (err) {
+    console.error('❌ メッセージ保存エラー詳細:', err.message);
+    res.status(500).json({ 
+      error: 'サーバーエラー', 
+      message: 'メッセージの保存に失敗しました' 
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`サーバーが起動しました: http://localhost:${PORT}`);
+  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
 });
